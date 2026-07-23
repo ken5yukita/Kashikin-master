@@ -1,23 +1,68 @@
 <!doctype html>
-<html lang="ja"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>貸金主任者 Study</title>
-<meta name="theme-color" content="#1e4fd1"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="貸金Study">
-<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png">
-<style>
-:root{--bg:#f3f6fb;--card:#fff;--ink:#142033;--muted:#687386;--line:#dde4ef;--blue:#1e4fd1;--blue2:#eaf0ff;--ok:#087a50;--okbg:#e7f7ef;--ng:#c43242;--ngbg:#fff0f1;--warn:#8a5900;--warnbg:#fff7df;--shadow:0 8px 28px rgba(25,45,90,.08)}
-[data-theme=dark]{--bg:#101521;--card:#182131;--ink:#f4f7fc;--muted:#aab4c6;--line:#2a374c;--blue:#7ea2ff;--blue2:#22304e;--ok:#5bd39b;--okbg:#153729;--ng:#ff8f9b;--ngbg:#44232a;--warn:#ffd27a;--warnbg:#3c321d;--shadow:none}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI",sans-serif}button,input,select{font:inherit}button{touch-action:manipulation}.app{max-width:760px;margin:auto;min-height:100vh;padding:calc(10px + env(safe-area-inset-top)) 14px calc(34px + env(safe-area-inset-bottom))}.header{display:flex;justify-content:space-between;align-items:center;padding:8px 3px 14px}.brand{font-size:22px;font-weight:900;letter-spacing:-.03em}.brand small{display:block;font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0;margin-top:3px}.iconBtn{width:42px;height:42px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:13px;font-size:19px}.screen{display:none}.screen.active{display:block}.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:17px;box-shadow:var(--shadow);margin-bottom:13px}.hero{background:linear-gradient(135deg,#1948c5,#5078e9);color:white;border:0}.hero .muted{color:#dce6ff}.heroTop{display:flex;justify-content:space-between;gap:12px}.heroScore{font-size:42px;font-weight:900;margin:8px 0 2px}.muted{color:var(--muted);font-size:13px;line-height:1.55}.grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.menu{border:1px solid var(--line);background:var(--card);color:var(--ink);text-align:left;border-radius:17px;padding:16px;min-height:112px}.menu b{display:block;font-size:17px;margin:8px 0 3px}.menu .emoji{font-size:25px}.sectionTitle{font-size:16px;font-weight:900;margin:20px 3px 10px}.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:var(--blue2);border-radius:13px;padding:11px;text-align:center}.stat b{font-size:20px}.stat span{display:block;color:var(--muted);font-size:11px;margin-top:3px}.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:13px;padding:13px 15px;font-weight:800}.btn.primary{background:var(--blue);border-color:var(--blue);color:white}.btn.danger{color:var(--ng)}.btn.full{width:100%}.row{display:flex;gap:9px;align-items:center}.row>*{flex:1}.formLabel{display:block;font-size:12px;font-weight:800;color:var(--muted);margin:13px 2px 6px}.field{width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:12px}.categoryList{display:grid;gap:9px}.catBtn{display:flex;justify-content:space-between;align-items:center;width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:14px;text-align:left}.catBtn b{font-size:14px}.catBtn span{font-size:12px;color:var(--muted)}.topbar{display:flex;justify-content:space-between;gap:10px;align-items:center}.pill{display:inline-flex;align-items:center;background:var(--blue2);color:var(--blue);border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900}.progress{height:7px;background:var(--line);border-radius:99px;overflow:hidden;margin:13px 0 18px}.progress i{display:block;height:100%;background:var(--blue);width:0}.question{font-size:18px;line-height:1.7;font-weight:800;margin:12px 0 17px}.option{display:flex;width:100%;gap:11px;align-items:flex-start;text-align:left;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:16px;padding:14px;margin:9px 0;line-height:1.55}.option .num{flex:0 0 29px;width:29px;height:29px;border-radius:50%;display:grid;place-items:center;background:var(--blue2);color:var(--blue);font-weight:900}.option.selected{border-color:var(--blue);box-shadow:0 0 0 2px color-mix(in srgb,var(--blue) 18%,transparent)}.option.correct{border-color:var(--ok);background:var(--okbg)}.option.wrong{border-color:var(--ng);background:var(--ngbg)}.option:disabled{opacity:1}.feedback{margin-top:15px;border-radius:15px;padding:14px;font-weight:900}.feedback.ok{background:var(--okbg);color:var(--ok)}.feedback.ng{background:var(--ngbg);color:var(--ng)}.explanations{margin-top:12px}.exp{border:1px solid var(--line);border-radius:14px;padding:12px;margin:9px 0;line-height:1.6}.expHead{display:flex;justify-content:space-between;gap:8px;font-weight:900}.quote{border-left:4px solid var(--ng);background:var(--ngbg);padding:9px 10px;border-radius:7px;margin:8px 0;font-weight:800}.correctText{background:var(--okbg);padding:9px 10px;border-radius:9px;margin-top:7px}.source{font-size:11px;color:var(--muted);margin-top:8px}.source a{color:inherit}.navActions{display:flex;gap:9px;margin-top:16px}.navActions .primary{flex:1}.timer{font-variant-numeric:tabular-nums;font-weight:900}.resultScore{text-align:center;font-size:54px;font-weight:900;margin:12px 0 2px}.judge{text-align:center;font-size:23px;font-weight:900}.good{color:var(--ok)}.bad{color:var(--ng)}.barRow{margin:13px 0}.barLabel{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--blue)}.analysisBox{background:var(--blue2);padding:14px;border-radius:14px;line-height:1.65}.answerItem{border:1px solid var(--line);border-radius:15px;padding:12px;margin:10px 0}.answerHead{display:flex;justify-content:space-between;gap:9px}.answerHead .mark{font-weight:900}.answerItem.ok .mark{color:var(--ok)}.answerItem.ng .mark{color:var(--ng)}details summary{cursor:pointer;font-weight:800;margin-top:9px}.bookmark{border:0;background:transparent;color:var(--muted);font-size:24px;padding:0 3px}.bookmark.on{color:#e6a400}.notice{background:var(--warnbg);color:var(--warn);padding:12px;border-radius:13px;font-size:12px;line-height:1.6}.hidden{display:none!important}.search{position:sticky;top:env(safe-area-inset-top);z-index:3;background:var(--bg);padding:5px 0 10px}.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:999px;font-size:12px;z-index:20;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}.footerNote{text-align:center;color:var(--muted);font-size:11px;line-height:1.55;margin:20px 8px}.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:end center;z-index:50}.sheet{width:min(760px,100%);max-height:88vh;overflow:auto;background:var(--card);border-radius:22px 22px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom))}.sheetTitle{font-size:19px;font-weight:900;margin-bottom:12px}
-@media(max-width:380px){.question{font-size:17px}.grid{gap:8px}.menu{padding:13px}.card{padding:15px}}
-</style></head><body><div class="app">
-<header class="header"><div class="brand">貸金主任者 Study<small>オフライン4肢択一・全2,000問</small></div><button class="iconBtn" onclick="App.showSettings()" aria-label="設定">⚙︎</button></header>
-<main>
-<section id="home" class="screen active"></section>
-<section id="categories" class="screen"></section>
-<section id="setup" class="screen"></section>
-<section id="quiz" class="screen"></section>
-<section id="result" class="screen"></section>
-<section id="review" class="screen"></section>
-</main><div class="footerNote">初期問題データは2025年4月1日施行法令を中心に作成したオリジナル類題です。公式問題集ではありません。法改正後は内容が変わる場合があります。</div></div>
-<div id="modal" class="modal hidden" onclick="if(event.target===this)App.closeModal()"><div id="sheet" class="sheet"></div></div><div id="toast" class="toast"></div>
-<script src="facts.js"></script><script src="app.js"></script></body></html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#0b5b4b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="貸金主任者">
+  <title>貸金主任者 過去問1000</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    :root{
+      --bg:#f4f7f6;--card:#fff;--ink:#17211f;--muted:#61716d;--line:#d9e2df;
+      --brand:#0b5b4b;--brand2:#0f7664;--soft:#e8f4f1;--ok:#157347;--bad:#b42318;
+      --warn:#8a5a00;--shadow:0 8px 24px rgba(16,45,38,.08);--qfont:16px;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI",Meiryo,sans-serif}
+    body{min-height:100vh;padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+    button,select,input{font:inherit}
+    button{cursor:pointer}
+    .topbar{position:sticky;top:0;z-index:20;background:rgba(244,247,246,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 14px 10px}
+    .topbar-inner{max-width:760px;margin:auto;display:flex;align-items:center;gap:10px}
+    .brand{font-weight:800;letter-spacing:.01em;flex:1}.brand small{display:block;color:var(--muted);font-size:11px;font-weight:600;margin-top:2px}
+    .icon-btn{border:1px solid var(--line);background:var(--card);border-radius:12px;min-width:42px;height:42px;color:var(--ink)}
+    main{max-width:760px;margin:auto;padding:16px 14px 40px}
+    .hero{background:linear-gradient(145deg,#0b5b4b,#0f7664);color:white;border-radius:22px;padding:22px;box-shadow:var(--shadow)}
+    .hero h1{font-size:24px;line-height:1.35;margin:0 0 8px}.hero p{margin:0;opacity:.88;line-height:1.65;font-size:14px}
+    .hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}.hero-stat{background:rgba(255,255,255,.12);border-radius:14px;padding:11px 8px;text-align:center}.hero-stat strong{display:block;font-size:19px}.hero-stat span{font-size:11px;opacity:.85}
+    h2{font-size:18px;margin:24px 2px 12px}.subtle{color:var(--muted);font-size:13px;line-height:1.6}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.menu-card{border:1px solid var(--line);background:var(--card);border-radius:18px;padding:16px;text-align:left;box-shadow:var(--shadow);min-height:120px}.menu-card b{display:block;font-size:16px;margin:8px 0 4px}.menu-card span{display:block;color:var(--muted);font-size:12px;line-height:1.5}.menu-icon{font-size:27px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+    .field{margin-bottom:15px}.field label{display:block;font-weight:700;font-size:14px;margin-bottom:7px}.field select,.field input{width:100%;border:1px solid var(--line);border-radius:12px;background:white;padding:12px;color:var(--ink)}
+    .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.seg button{border:1px solid var(--line);background:white;border-radius:12px;padding:11px 3px}.seg button.active{background:var(--brand);color:white;border-color:var(--brand)}
+    .primary,.secondary,.danger{width:100%;border-radius:14px;padding:14px 16px;font-weight:800;border:0}.primary{background:var(--brand);color:white}.secondary{background:var(--soft);color:var(--brand);border:1px solid #b8d9d1}.danger{background:#fff0ef;color:var(--bad);border:1px solid #f1c2be}.row{display:flex;gap:10px}.row>*{flex:1}
+    .exam-list{display:grid;gap:10px}.exam-item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--card);border-radius:16px;padding:13px 14px;box-shadow:var(--shadow)}.exam-item .meta{flex:1}.exam-item b{display:block}.exam-item small{color:var(--muted)}.pass-chip{background:var(--soft);color:var(--brand);border-radius:999px;padding:6px 9px;font-size:12px;font-weight:800}.mini-go{border:0;background:var(--brand);color:white;border-radius:12px;padding:10px 12px;font-weight:700}
+    .quiz-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}.quiz-head .grow{flex:1}.quiz-head b{display:block}.quiz-head small{color:var(--muted)}.timer{font-variant-numeric:tabular-nums;font-weight:800;color:var(--brand);background:var(--soft);padding:8px 10px;border-radius:10px}
+    .progress{height:7px;background:#dfe9e6;border-radius:99px;overflow:hidden;margin:10px 0 16px}.progress>div{height:100%;background:var(--brand);transition:width .2s}
+    .question-card{background:white;border:1px solid var(--line);border-radius:20px;padding:18px 16px;box-shadow:var(--shadow)}.q-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.tag{font-size:11px;padding:5px 8px;background:#eef3f2;border-radius:999px;color:#50605c}.question-text{font-size:var(--qfont);line-height:1.82;white-space:pre-wrap;word-break:break-word;font-feature-settings:"palt"}
+    .answer-title{font-weight:800;margin:18px 0 8px}.answer-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.answer-btn{height:58px;border:2px solid var(--line);background:white;border-radius:14px;font-size:25px;font-weight:800}.answer-btn.selected{border-color:var(--brand);background:var(--soft);color:var(--brand)}.answer-btn.correct{border-color:var(--ok);background:#eaf7ef;color:var(--ok)}.answer-btn.wrong{border-color:var(--bad);background:#fff0ef;color:var(--bad)}
+    .feedback{margin-top:14px;border-radius:14px;padding:14px;line-height:1.6}.feedback.ok{background:#eaf7ef;color:#0b5d36}.feedback.bad{background:#fff0ef;color:#8e1d16}.feedback b{display:block;margin-bottom:4px}.explain{margin-top:9px;font-size:13px;color:var(--muted)}
+    .quiz-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.quiz-actions .wide{grid-column:1/-1}
+    details.navigator{margin-top:12px;background:white;border:1px solid var(--line);border-radius:14px;padding:12px}details summary{font-weight:700;color:var(--brand)}.qnav{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin-top:12px}.qnav button{aspect-ratio:1;border:1px solid var(--line);background:white;border-radius:8px;font-size:11px;padding:0}.qnav button.done{background:var(--soft);border-color:#8fc1b6}.qnav button.current{background:var(--brand);color:white}.qnav button.flag{box-shadow:inset 0 0 0 2px #e4a11b}
+    .score-ring{width:150px;height:150px;border-radius:50%;margin:12px auto;display:grid;place-items:center;background:conic-gradient(var(--brand) var(--pct),#e2eae8 0);position:relative}.score-ring:before{content:"";position:absolute;inset:13px;background:white;border-radius:50%}.score-ring .inside{z-index:1;text-align:center}.score-ring strong{display:block;font-size:34px}.score-ring span{font-size:12px;color:var(--muted)}
+    .verdict{text-align:center;font-size:22px;font-weight:900;margin:8px 0}.verdict.pass{color:var(--ok)}.verdict.fail{color:var(--bad)}
+    .breakdown{display:grid;gap:8px}.bar-row{display:grid;grid-template-columns:minmax(110px,1fr) 90px;gap:10px;align-items:center;font-size:13px}.bar-track{height:8px;background:#e5ecea;border-radius:99px;overflow:hidden}.bar-track i{display:block;height:100%;background:var(--brand)}
+    .review-card{border:1px solid var(--line);border-radius:15px;background:white;margin:10px 0;overflow:hidden}.review-card summary{padding:13px;display:flex;gap:10px;align-items:center;list-style:none}.review-card summary::-webkit-details-marker{display:none}.review-num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:#edf2f1}.review-num.ok{background:#eaf7ef;color:var(--ok)}.review-num.bad{background:#fff0ef;color:var(--bad)}.review-body{padding:0 14px 15px}.review-text{font-size:14px;line-height:1.7;white-space:pre-wrap;max-height:260px;overflow:auto;background:#f7f9f8;border-radius:10px;padding:10px}.answer-line{font-weight:700;margin-top:10px}.source-note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:10px}
+    .notice{border-left:4px solid var(--brand);background:var(--soft);padding:12px 13px;border-radius:10px;font-size:13px;line-height:1.6;margin:12px 0}.warning{border-left-color:#d89a1b;background:#fff8e8;color:#704a00}
+    .empty{text-align:center;padding:38px 15px;color:var(--muted)}
+    .footer-note{margin-top:28px;padding:16px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.7}.footer-note a{color:var(--brand)}
+    .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#17211f;color:white;border-radius:999px;padding:10px 16px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:99;white-space:nowrap}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    @media(max-width:390px){.grid{grid-template-columns:1fr}.hero h1{font-size:22px}.qnav{grid-template-columns:repeat(8,1fr)}}
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="topbar-inner">
+    <button class="icon-btn" id="homeBtn" aria-label="ホーム" hidden>⌂</button>
+    <div class="brand">貸金主任者 過去問1000<small>日本貸金業協会 公開問題・第1回〜第20回</small></div>
+    <button class="icon-btn" id="fontBtn" aria-label="文字サイズ">Aa</button>
+  </div></header>
+  <main id="app"></main>
+  <div class="toast" id="toast"></div>
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,74 +1,234 @@
-(()=>{
-'use strict';
-const facts=window.KASHIKIN_FACTS||[],sources=window.KASHIKIN_SOURCES||{};
-const K='kashikinStudyV1';
-const defaultState={stats:{},wrong:[],bookmarks:[],sessions:[],settings:{daily:20,pass:31,theme:'system'},lastMode:null};
-let state=loadState(),bank=[],session=null,timerHandle=null;
-const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function loadState(){try{return {...defaultState,...JSON.parse(localStorage.getItem(K)||'{}'),settings:{...defaultState.settings,...(JSON.parse(localStorage.getItem(K)||'{}').settings||{})}}}catch{return structuredClone(defaultState)}}
-function save(){localStorage.setItem(K,JSON.stringify(state))}
-function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
-function rng(seed){let x=seed||123456789;return()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296}}
-function shuffle(a,r){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function generateBank(){const by={};facts.forEach(f=>(by[f.category]??=[]).push(f));const result=[];let serial=1;Object.entries(by).forEach(([cat,arr],ci)=>{const seen=new Set(),r=rng(hash(cat));let tries=0;while(seen.size<100&&tries<10000){tries++;const askCorrect=seen.size%2===0;const chosen=shuffle(arr,r).slice(0,4);const target=Math.floor(r()*4);const opts=chosen.map((f,i)=>{const truth=askCorrect?(i===target):(i!==target);return {factId:f.id,text:truth?f.trueText:f.falseText,truth,wrongQuote:truth?'':f.wrongQuote,correction:f.correction,explanation:f.explanation,source:f.source}});const ordered=shuffle(opts,r);const correct=ordered.findIndex(o=>askCorrect?o.truth:!o.truth);const sig=(askCorrect?'T':'F')+'|'+ordered.map(o=>o.factId+(o.truth?'1':'0')).join('|');if(seen.has(sig))continue;seen.add(sig);const base=chosen[0];result.push({id:'Q'+String(serial++).padStart(4,'0'),section:base.section,category:cat,topic:base.topic,ask:askCorrect?'correct':'incorrect',prompt:`次の記述のうち、${askCorrect?'適切なもの':'適切でないもの'}を1つ選びなさい。`,options:ordered,correct});}}
-);return result}
-bank=generateBank();
-const cats=[...new Set(facts.map(f=>f.category))];
-function setTheme(){const t=state.settings.theme;if(t==='system'){document.documentElement.dataset.theme=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}else document.documentElement.dataset.theme=t}
-setTheme();matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',setTheme);
-function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');scrollTo({top:0,behavior:'instant'})}
-function overall(){const vals=Object.values(state.stats);const answered=vals.reduce((s,v)=>s+(v.attempts||0),0),correct=vals.reduce((s,v)=>s+(v.correct||0),0);return {answered,correct,rate:answered?Math.round(correct/answered*100):0}}
-function streak(){const days=[...new Set(state.sessions.map(x=>x.date))].sort().reverse();if(!days.length)return 0;let n=0,d=new Date();for(;;){const k=d.toISOString().slice(0,10);if(days.includes(k)){n++;d.setDate(d.getDate()-1)}else if(n===0){d.setDate(d.getDate()-1);if(!days.includes(d.toISOString().slice(0,10)))break}else break}return n}
-function todayCount(){const d=new Date().toISOString().slice(0,10);return state.sessions.filter(x=>x.date===d).reduce((s,x)=>s+x.total,0)}
-function home(){clearTimer();const o=overall(),done=todayCount();$('home').innerHTML=`
-<div class="card hero"><div class="heroTop"><div><div class="muted">今日の進捗</div><div class="heroScore">${Math.min(done,state.settings.daily)}<small style="font-size:18px"> / ${state.settings.daily}問</small></div><div class="muted">連続学習 ${streak()}日 ・ 総正答率 ${o.rate}%</div></div><div style="font-size:42px">📘</div></div><button class="btn full" style="margin-top:14px;background:white;color:#1948c5;border:0" onclick="App.startDaily()">今日のおすすめを始める</button></div>
-<div class="stats3"><div class="stat"><b>${bank.length}</b><span>収録問題</span></div><div class="stat"><b>${o.answered}</b><span>回答回数</span></div><div class="stat"><b>${state.wrong.length}</b><span>要復習</span></div></div>
-<div class="sectionTitle">学習モード</div><div class="grid">
-<button class="menu" onclick="App.openCategories()"><span class="emoji">📚</span><b>分野別</b><span class="muted">20分野から選択</span></button>
-<button class="menu" onclick="App.setupRandom()"><span class="emoji">🎲</span><b>ランダム</b><span class="muted">全分野から出題</span></button>
-<button class="menu" onclick="App.startMock()"><span class="emoji">📝</span><b>本試験形式</b><span class="muted">50問・120分</span></button>
-<button class="menu" onclick="App.openReview()"><span class="emoji">🔁</span><b>復習</b><span class="muted">間違い・ブックマーク</span></button></div>
-<div class="sectionTitle">最近の成績</div><div class="card">${recentSessions()}</div>
-<div class="notice">本試験形式は、第20回の科目構成（法令27問・貸付実務15問・資金需要者保護5問・財務会計3問）に合わせ、各科目で「適切なもの」を先に、「適切でないもの」を後に並べます。</div>`;show('home')}
-function recentSessions(){if(!state.sessions.length)return '<div class="muted">まだ学習履歴がありません。</div>';return state.sessions.slice(-5).reverse().map(s=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><span>${esc(s.label)}<small class="muted"> ${s.date}</small></span><b>${s.score}/${s.total}</b></div>`).join('')}
-function openCategories(){const counts={};bank.forEach(q=>counts[q.category]=(counts[q.category]||0)+1);$('categories').innerHTML=`<div class="row"><button class="btn" onclick="App.home()">← ホーム</button><div></div></div><div class="sectionTitle">分野を選ぶ</div><div class="categoryList">${cats.map(c=>{const st=categoryStat(c);return `<button class="catBtn" onclick="App.setupCategory('${esc(c)}')"><div><b>${esc(c)}</b><span>${counts[c]}問 ・ 正答率 ${st.rate}%</span></div><strong>›</strong></button>`}).join('')}</div>`;show('categories')}
-function categoryStat(c){let a=0,ok=0;bank.filter(q=>q.category===c).forEach(q=>{const s=state.stats[q.id];if(s){a+=s.attempts||0;ok+=s.correct||0}});return {a,ok,rate:a?Math.round(ok/a*100):0}}
-function setupCategory(c){setup({type:'category',category:c,label:c})}
-function setupRandom(){setup({type:'random',label:'ランダム'})}
-function setup(cfg){$('setup').innerHTML=`<button class="btn" onclick="App.home()">← 戻る</button><div class="card" style="margin-top:12px"><div class="pill">${esc(cfg.label)}</div><h2>出題設定</h2><label class="formLabel">問題数</label><select id="count" class="field"><option>10</option><option selected>20</option><option>30</option><option>50</option><option>100</option></select><label class="formLabel">解答後の表示</label><select id="feedbackMode" class="field"><option value="instant">すぐ正誤と解説を表示</option><option value="end">最後にまとめて採点</option></select><button class="btn primary full" style="margin-top:16px" onclick='App.beginSetup(${JSON.stringify(cfg)})'>開始</button></div>`;show('setup')}
-function beginSetup(cfg){const n=Number($('count').value),instant=$('feedbackMode').value==='instant';let pool=cfg.type==='category'?bank.filter(q=>q.category===cfg.category):bank;startSession(pick(pool,n,Date.now()),{label:cfg.label,instant,timed:false})}
-function pick(pool,n,seed){return shuffle(pool,rng(seed)).slice(0,Math.min(n,pool.length))}
-function startDaily(){const date=new Date().toISOString().slice(0,10),r=rng(hash(date));const weighted=[];cats.forEach(c=>{const st=categoryStat(c),w=st.a===0?2:Math.max(1,Math.round((100-st.rate)/20));for(let i=0;i<w;i++)weighted.push(c)});const qs=[],used=new Set();while(qs.length<state.settings.daily&&used.size<bank.length){const c=weighted[Math.floor(r()*weighted.length)],p=bank.filter(q=>q.category===c&&!used.has(q.id));if(!p.length)continue;const q=p[Math.floor(r()*p.length)];used.add(q.id);qs.push(q)}startSession(qs,{label:'今日のおすすめ',instant:true,timed:false})}
-function startMock(){const seed=Date.now(),r=rng(seed),counts={1:27,2:15,3:5,4:3},qs=[];Object.entries(counts).forEach(([sec,n])=>{qs.push(...pick(bank.filter(q=>q.section===Number(sec)),n,Math.floor(r()*1e9))) });qs.sort((a,b)=>a.section-b.section||(a.ask===b.ask?cats.indexOf(a.category)-cats.indexOf(b.category):(a.ask==='correct'?-1:1)));startSession(qs,{label:'本試験形式',instant:false,timed:true,duration:120*60})}
-function startSession(qs,opt){session={questions:qs,index:0,answers:Array(qs.length).fill(null),checked:Array(qs.length).fill(false),...opt,started:Date.now(),endAt:opt.timed?Date.now()+opt.duration*1000:null};state.lastMode={ids:qs.map(q=>q.id),opt:{label:opt.label,instant:opt.instant,timed:opt.timed,duration:opt.duration}};save();renderQuiz();show('quiz');if(opt.timed)startTimer()}
-function renderQuiz(){const q=session.questions[session.index],ans=session.answers[session.index],checked=session.checked[session.index];$('quiz').innerHTML=`<div class="card"><div class="topbar"><button class="btn" style="padding:8px 10px" onclick="App.confirmQuit()">終了</button><span class="pill">${esc(q.category)}</span><span id="timer" class="timer">${session.timed?'120:00':`${session.index+1}/${session.questions.length}`}</span></div><div class="progress"><i style="width:${(session.index+1)/session.questions.length*100}%"></i></div><div class="topbar"><span class="muted">問 ${session.index+1} / ${session.questions.length}</span><button class="bookmark ${state.bookmarks.includes(q.id)?'on':''}" onclick="App.toggleBookmark('${q.id}')">★</button></div><div class="question">${esc(q.prompt)}</div>${q.options.map((o,i)=>`<button class="option ${ans===i?'selected':''} ${checked?(i===q.correct?'correct':(ans===i?'wrong':'')):''}" ${checked?'disabled':''} onclick="App.choose(${i})"><span class="num">${i+1}</span><span>${esc(o.text)}</span></button>`).join('')}${checked?feedbackHtml(q,ans):''}<div class="navActions"><button class="btn" ${session.index===0?'disabled':''} onclick="App.prev()">前へ</button><button class="btn primary" onclick="App.next()">${session.index===session.questions.length-1?'採点する':'次へ'}</button></div></div>`;if(session.timed)updateTimer()}
-function feedbackHtml(q,ans){const ok=ans===q.correct;return `<div class="feedback ${ok?'ok':'ng'}">${ok?'正解':'不正解'}　正解は ${q.correct+1}</div><div class="explanations">${q.options.map((o,i)=>optionExp(o,i,q.correct)).join('')}</div>`}
-function optionExp(o,i,correct){const src=sources[o.source]||{};return `<div class="exp"><div class="expHead"><span>選択肢 ${i+1}</span><span class="${i===correct?'good':''}">${o.truth?'正しい記述':'誤った記述'}</span></div>${o.truth?`<div class="correctText">${esc(o.explanation)}</div>`:`<div class="quote">「${esc(o.wrongQuote)}」</div><div class="correctText"><b>正しい内容</b><br>${esc(o.correction)}</div><div class="muted" style="margin-top:7px">${esc(o.explanation)}</div>`}<div class="source">根拠：${src.url?`<a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.label)}</a>`:esc(src.label||'収録データ')}</div></div>`}
-function choose(i){if(session.checked[session.index])return;session.answers[session.index]=i;if(session.instant){session.checked[session.index]=true;recordAttempt(session.questions[session.index],i)}renderQuiz()}
-function next(){if(session.answers[session.index]===null){toast('選択肢を選んでください');return}if(!session.instant&&!session.checked[session.index]){}if(session.instant&&!session.checked[session.index]){session.checked[session.index]=true;recordAttempt(session.questions[session.index],session.answers[session.index]);renderQuiz();return}if(session.index===session.questions.length-1){finish();return}session.index++;renderQuiz()}
-function prev(){if(session.index>0){session.index--;renderQuiz()}}
-function recordAttempt(q,ans){const s=state.stats[q.id]||{attempts:0,correct:0,last:0};s.attempts++;if(ans===q.correct)s.correct++;s.last=Date.now();state.stats[q.id]=s;if(ans!==q.correct){if(!state.wrong.includes(q.id))state.wrong.push(q.id)}else if(s.attempts>=2&&s.correct/s.attempts>=.7){state.wrong=state.wrong.filter(x=>x!==q.id)}save()}
-function finish(){clearTimer();if(!session.instant){session.questions.forEach((q,i)=>recordAttempt(q,session.answers[i]));session.checked.fill(true)}const score=session.questions.reduce((s,q,i)=>s+(session.answers[i]===q.correct),0),total=session.questions.length;state.sessions.push({date:new Date().toISOString().slice(0,10),label:session.label,score,total,at:Date.now()});state.sessions=state.sessions.slice(-100);save();renderResult(score,total);show('result')}
-function renderResult(score,total){const pass=total===50?score>=state.settings.pass:score/total>=state.settings.pass/50;const by={};session.questions.forEach((q,i)=>{by[q.category]??={ok:0,total:0};by[q.category].total++;if(session.answers[i]===q.correct)by[q.category].ok++});const weak=Object.entries(by).sort((a,b)=>a[1].ok/a[1].total-b[1].ok/b[1].total).slice(0,3);$('result').innerHTML=`<div class="card"><span class="pill">結果</span><div class="resultScore">${score}<small style="font-size:22px"> / ${total}</small></div><div class="judge ${pass?'good':'bad'}">${pass?'合格圏':'要復習'}</div><div class="muted" style="text-align:center;margin:5px">${total===50?`合格圏設定 ${state.settings.pass}/50`: `正答率 ${Math.round(score/total*100)}%`}</div></div><div class="card"><h3>分野別</h3>${Object.entries(by).map(([c,v])=>`<div class="barRow"><div class="barLabel"><b>${esc(c)}</b><span>${v.ok}/${v.total}（${Math.round(v.ok/v.total*100)}%）</span></div><div class="bar"><i style="width:${v.ok/v.total*100}%"></i></div></div>`).join('')}</div><div class="card"><h3>学習分析</h3><div class="analysisBox">${analysisText(weak)}</div><div class="row" style="margin-top:13px"><button class="btn" onclick="App.retryWrong()">間違いだけ復習</button><button class="btn primary" onclick="App.retrySame()">同じ問題を解く</button></div></div><div class="sectionTitle">全問題の回答・正誤</div>${session.questions.map((q,i)=>answerItem(q,i)).join('')}<button class="btn full" onclick="App.home()">ホームへ</button>`}
-function analysisText(weak){if(!weak.length)return 'データがありません。';return `優先して復習したい分野は、<b>${weak.map(([c,v])=>`${esc(c)}（${Math.round(v.ok/v.total*100)}%）`).join('、')}</b>です。誤った選択肢の「誤った記述」と「正しい内容」を対にして覚え、数字・期限・主体を重点的に確認してください。`}
-function answerItem(q,i){const ans=session.answers[i],ok=ans===q.correct;return `<div class="answerItem ${ok?'ok':'ng'}"><div class="answerHead"><b>問${i+1}　${esc(q.category)}</b><span class="mark">${ok?'正解':'不正解'}</span></div><div class="muted" style="margin-top:6px">あなた：${ans===null?'未回答':ans+1} ／ 正解：${q.correct+1}</div><div style="margin-top:8px;line-height:1.55">${esc(q.options[ans]?.text||'未回答')}</div><details><summary>全選択肢の解説</summary>${q.options.map((o,j)=>optionExp(o,j,q.correct)).join('')}</details></div>`}
-function retryWrong(){const qs=session.questions.filter((q,i)=>session.answers[i]!==q.correct);if(!qs.length){toast('間違えた問題はありません');return}startSession(qs,{label:'直前の間違い復習',instant:true,timed:false})}
-function retrySame(){startSession(session.questions,{label:session.label+'（再挑戦）',instant:session.instant,timed:session.timed,duration:session.duration})}
-function openReview(){const wrongQs=state.wrong.map(id=>bank.find(q=>q.id===id)).filter(Boolean),bookQs=state.bookmarks.map(id=>bank.find(q=>q.id===id)).filter(Boolean);$('review').innerHTML=`<button class="btn" onclick="App.home()">← ホーム</button><div class="card" style="margin-top:12px"><h2>復習</h2><button class="catBtn" onclick="App.startReview('wrong')"><div><b>間違えた問題</b><span>${wrongQs.length}問</span></div><strong>›</strong></button><button class="catBtn" style="margin-top:9px" onclick="App.startReview('bookmark')"><div><b>ブックマーク</b><span>${bookQs.length}問</span></div><strong>›</strong></button></div><div class="card"><h3>データ管理</h3><div class="row"><button class="btn" onclick="App.exportData()">書き出し</button><label class="btn" style="text-align:center">読み込み<input type="file" accept="application/json" hidden onchange="App.importData(this.files[0])"></label></div></div>`;show('review')}
-function startReview(type){const ids=type==='wrong'?state.wrong:state.bookmarks,qs=ids.map(id=>bank.find(q=>q.id===id)).filter(Boolean);if(!qs.length){toast('対象の問題がありません');return}startSession(pick(qs,Math.min(50,qs.length),Date.now()),{label:type==='wrong'?'間違い復習':'ブックマーク',instant:true,timed:false})}
-function toggleBookmark(id){state.bookmarks=state.bookmarks.includes(id)?state.bookmarks.filter(x=>x!==id):[...state.bookmarks,id];save();renderQuiz()}
-function showSettings(){$('sheet').innerHTML=`<div class="sheetTitle">設定</div><label class="formLabel">1日の目標問題数</label><select id="dailySetting" class="field"><option ${state.settings.daily===10?'selected':''}>10</option><option ${state.settings.daily===20?'selected':''}>20</option><option ${state.settings.daily===30?'selected':''}>30</option><option ${state.settings.daily===50?'selected':''}>50</option></select><label class="formLabel">本試験モードの合格圏</label><select id="passSetting" class="field">${[30,31,32,33,34,35].map(n=>`<option ${state.settings.pass===n?'selected':''} value="${n}">${n}/50</option>`).join('')}</select><label class="formLabel">表示テーマ</label><select id="themeSetting" class="field"><option value="system" ${state.settings.theme==='system'?'selected':''}>iPhone設定に合わせる</option><option value="light" ${state.settings.theme==='light'?'selected':''}>ライト</option><option value="dark" ${state.settings.theme==='dark'?'selected':''}>ダーク</option></select><button class="btn primary full" style="margin-top:16px" onclick="App.saveSettings()">保存</button><button class="btn danger full" style="margin-top:9px" onclick="App.resetAll()">学習履歴をすべて消去</button><div class="notice" style="margin-top:14px">問題はすべて端末内に収録され、回答履歴もこのiPhone内のSafariデータに保存されます。</div>`;$('modal').classList.remove('hidden')}
-function saveSettings(){state.settings.daily=Number($('dailySetting').value);state.settings.pass=Number($('passSetting').value);state.settings.theme=$('themeSetting').value;save();setTheme();closeModal();home();toast('設定を保存しました')}
-function closeModal(){$('modal').classList.add('hidden')}
-function resetAll(){if(!confirm('学習履歴、間違い、ブックマークをすべて消去しますか？'))return;state=structuredClone(defaultState);save();setTheme();closeModal();home()}
-function exportData(){const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='kashikin-study-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-function importData(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);state={...defaultState,...d,settings:{...defaultState.settings,...(d.settings||{})}};save();home();toast('復元しました')}catch{alert('バックアップファイルを読み込めませんでした')}};r.readAsText(f)}
-function confirmQuit(){if(confirm('この学習を終了してホームへ戻りますか？'))home()}
-function startTimer(){clearTimer();timerHandle=setInterval(()=>{updateTimer();if(Date.now()>=session.endAt){clearTimer();alert('試験時間が終了しました。採点します。');finish()}},1000)}
-function updateTimer(){const el=$('timer');if(!el||!session?.timed)return;const sec=Math.max(0,Math.ceil((session.endAt-Date.now())/1000));el.textContent=`${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`}
-function clearTimer(){if(timerHandle){clearInterval(timerHandle);timerHandle=null}}
-function toast(s){const el=$('toast');el.textContent=s;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800)}
-window.App={home,openCategories,setupCategory,setupRandom,beginSetup,startDaily,startMock,choose,next,prev,toggleBookmark,confirmQuit,retryWrong,retrySame,openReview,startReview,showSettings,saveSettings,closeModal,resetAll,exportData,importData};
-if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-home();
+(() => {
+  'use strict';
+  const DATA = window.OFFICIAL_DATA;
+  const $app = document.getElementById('app');
+  const $home = document.getElementById('homeBtn');
+  const $font = document.getElementById('fontBtn');
+  const $toast = document.getElementById('toast');
+  const CIRCLES = ['','①','②','③','④'];
+  const LS = {
+    active:'kashikin.active.v2', history:'kashikin.history.v2', stats:'kashikin.stats.v2',
+    seen:'kashikin.seen.v2', flags:'kashikin.flags.v2', bookmarks:'kashikin.bookmarks.v2', font:'kashikin.font.v2'
+  };
+  const qById = new Map(DATA.questions.map(q => [q.id,q]));
+  let view='home';
+  let session=null;
+  let timerHandle=null;
+  let practiceConfig={count:20,section:'all',topic:'all',feedback:true};
+
+  function read(key,fallback){try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
+  function write(key,val){localStorage.setItem(key,JSON.stringify(val))}
+  function esc(s=''){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+  function shuffle(a){const x=[...a];for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}return x}
+  function toast(msg){$toast.textContent=msg;$toast.classList.add('show');setTimeout(()=>$toast.classList.remove('show'),1800)}
+  function fmtDate(ts){return new Intl.DateTimeFormat('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(ts))}
+  function saveActive(){
+    if(!session)return localStorage.removeItem(LS.active);
+    const copy={...session,questionIds:session.questions.map(q=>q.id)};delete copy.questions;
+    write(LS.active,copy);
+  }
+  function restoreActive(){
+    const s=read(LS.active,null);if(!s||!Array.isArray(s.questionIds))return null;
+    const qs=s.questionIds.map(id=>qById.get(id)).filter(Boolean);if(qs.length!==s.questionIds.length)return null;
+    delete s.questionIds;s.questions=qs;return s;
+  }
+  function clearTimer(){if(timerHandle){clearInterval(timerHandle);timerHandle=null}}
+  function setView(v){view=v;$home.hidden=v==='home';window.scrollTo({top:0,behavior:'instant'});clearTimer()}
+  function sourceFooter(){return `<div class="footer-note">出典：日本貸金業協会「貸金業務取扱主任者資格試験問題」「試験問題の正答」。問題文は出典を明示して収録し、写真・画像は転載していません。<br><a href="${DATA.archiveUrl}" target="_blank" rel="noopener">公式の過去問題ページを開く</a></div>`}
+
+  function renderHome(){
+    setView('home'); session=null;
+    const hist=read(LS.history,[]), stats=read(LS.stats,{});
+    const attempts=Object.values(stats).reduce((n,s)=>n+(s.attempts||0),0);
+    const correct=Object.values(stats).reduce((n,s)=>n+(s.correct||0),0);
+    const active=restoreActive();
+    const recent=hist.slice(0,3);
+    $app.innerHTML=`
+      <section class="hero"><h1>公式過去問を、重複なしで毎日。</h1><p>第1回〜第20回の全1,000問を収録。過去問は本来の順番で、ランダム演習は未出題問題から選びます。</p>
+        <div class="hero-stats"><div class="hero-stat"><strong>1,000</strong><span>収録問題</span></div><div class="hero-stat"><strong>${attempts}</strong><span>解答数</span></div><div class="hero-stat"><strong>${attempts?Math.round(correct/attempts*100):0}%</strong><span>総正答率</span></div></div>
+      </section>
+      ${active?`<div class="notice"><b>途中の演習があります</b><br>${active.mode==='exam'?`第${active.exam}回 過去問`:`ランダム${active.questions.length}問`}・問題${active.current+1}まで進行中。<br><button class="primary" style="margin-top:10px" id="resumeBtn">続きから再開</button></div>`:''}
+      <h2>学習モード</h2><div class="grid">
+        <button class="menu-card" id="pastBtn"><span class="menu-icon">📝</span><b>回別過去問</b><span>各回50問を公式の問題順で解く。各回の実際の合格基準で判定。</span></button>
+        <button class="menu-card" id="practiceBtn"><span class="menu-icon">🎲</span><b>重複なし演習</b><span>分野・問題数を選択。未出題問題を優先し、同じ文章を繰り返さない。</span></button>
+        <button class="menu-card" id="wrongBtn"><span class="menu-icon">↻</span><b>間違い復習</b><span>過去に誤答した問題だけを最大20問出題。</span></button>
+        <button class="menu-card" id="statsBtn"><span class="menu-icon">📊</span><b>成績・履歴</b><span>分野別正答率と直近の受験結果を確認。</span></button>
+      </div>
+      ${recent.length?`<h2>最近の結果</h2><div class="card">${recent.map(h=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><span>${h.mode==='exam'?`第${h.exam}回`:'ランダム演習'} <small class="subtle">${fmtDate(h.at)}</small></span><b>${h.score}/${h.total}</b></div>`).join('')}</div>`:''}
+      ${sourceFooter()}`;
+    document.getElementById('pastBtn').onclick=renderPastList;
+    document.getElementById('practiceBtn').onclick=renderPracticeSetup;
+    document.getElementById('wrongBtn').onclick=startWrongReview;
+    document.getElementById('statsBtn').onclick=renderStats;
+    if(active)document.getElementById('resumeBtn').onclick=()=>{session=active;renderQuiz()};
+  }
+
+  function renderPastList(){
+    setView('past');
+    $app.innerHTML=`<h2 style="margin-top:4px">回別過去問</h2><p class="subtle">各回50問・公式の問題順です。回答中は正誤を表示せず、提出後に採点します。</p><div class="exam-list">
+      ${DATA.exams.map(e=>`<div class="exam-item"><div class="meta"><b>${e.label} <span class="subtle">${e.year}</span></b><small>50問／120分</small></div><span class="pass-chip">合格 ${e.passMark}点</span><button class="mini-go" data-exam="${e.exam}">解く</button></div>`).join('')}
+      </div>${sourceFooter()}`;
+    $app.querySelectorAll('[data-exam]').forEach(b=>b.onclick=()=>startExam(Number(b.dataset.exam)));
+  }
+
+  function renderPracticeSetup(){
+    setView('setup');
+    const sections=[...new Set(DATA.questions.map(q=>q.section))];
+    const topics=[...new Set(DATA.questions.map(q=>q.topic))].sort((a,b)=>a.localeCompare(b,'ja'));
+    const seen=read(LS.seen,{});
+    $app.innerHTML=`<h2 style="margin-top:4px">重複なし演習</h2>
+      <div class="notice">選んだ条件ごとに出題済みIDを端末内へ保存し、未出題問題を優先します。対象問題を一巡した場合だけ履歴をリセットして再出題します。</div>
+      <div class="card">
+        <div class="field"><label>問題数</label><div class="seg" id="countSeg">${[10,20,30,50].map(n=>`<button data-count="${n}" class="${practiceConfig.count===n?'active':''}">${n}問</button>`).join('')}</div></div>
+        <div class="field"><label>公式4科目</label><select id="sectionSel"><option value="all">すべて</option>${sections.map(s=>`<option ${practiceConfig.section===s?'selected':''}>${esc(s)}</option>`).join('')}</select></div>
+        <div class="field"><label>細分類</label><select id="topicSel"><option value="all">すべて</option>${topics.map(s=>`<option ${practiceConfig.topic===s?'selected':''}>${esc(s)}</option>`).join('')}</select></div>
+        <div class="field"><label>回答後の表示</label><select id="feedbackSel"><option value="yes" ${practiceConfig.feedback?'selected':''}>その場で正誤を表示</option><option value="no" ${!practiceConfig.feedback?'selected':''}>最後にまとめて採点</option></select></div>
+        <div id="poolInfo" class="subtle" style="margin-bottom:14px"></div>
+        <button class="primary" id="startPractice">演習を始める</button>
+        <button class="secondary" id="resetSeen" style="margin-top:10px">この条件の出題履歴をリセット</button>
+      </div>`;
+    function configNow(){return {count:practiceConfig.count,section:document.getElementById('sectionSel').value,topic:document.getElementById('topicSel').value,feedback:document.getElementById('feedbackSel').value==='yes'}}
+    function key(c){return `${c.section}|${c.topic}`}
+    function update(){const c=configNow();const pool=eligible(c);const used=new Set(seen[key(c)]||[]);const left=pool.filter(q=>!used.has(q.id)).length;document.getElementById('poolInfo').textContent=`対象 ${pool.length}問／未出題 ${left}問`;}
+    $app.querySelectorAll('[data-count]').forEach(b=>b.onclick=()=>{practiceConfig.count=Number(b.dataset.count);$app.querySelectorAll('[data-count]').forEach(x=>x.classList.toggle('active',x===b));update()});
+    ['sectionSel','topicSel'].forEach(id=>document.getElementById(id).onchange=update);
+    document.getElementById('feedbackSel').onchange=()=>{};
+    document.getElementById('startPractice').onclick=()=>{practiceConfig=configNow();startPractice(practiceConfig)};
+    document.getElementById('resetSeen').onclick=()=>{const c=configNow();delete seen[key(c)];write(LS.seen,seen);toast('出題履歴をリセットしました');update()};
+    update();
+  }
+
+  function eligible(c){return DATA.questions.filter(q=>(c.section==='all'||q.section===c.section)&&(c.topic==='all'||q.topic===c.topic))}
+  function seenKey(c){return `${c.section}|${c.topic}`}
+  function chooseNoRepeat(c){
+    const pool=eligible(c); if(!pool.length)return [];
+    const seen=read(LS.seen,{}), key=seenKey(c);const used=new Set(seen[key]||[]);
+    const take=Math.min(c.count,pool.length);
+    const fresh=shuffle(pool.filter(q=>!used.has(q.id)));
+    let chosen=[];
+    if(fresh.length>=take){
+      chosen=fresh.slice(0,take);
+      seen[key]=[...(seen[key]||[]),...chosen.map(q=>q.id)];
+    }else{
+      // Finish every remaining unseen item first, then begin a new cycle only for the shortage.
+      chosen=[...fresh];
+      const picked=new Set(chosen.map(q=>q.id));
+      const fill=shuffle(pool.filter(q=>!picked.has(q.id))).slice(0,take-chosen.length);
+      chosen.push(...fill);
+      // Stored IDs now represent progress in the new cycle. Items used to finish the old cycle are not counted twice.
+      seen[key]=fill.map(q=>q.id);
+    }
+    seen[key]=[...new Set(seen[key])].slice(-pool.length);
+    write(LS.seen,seen);return chosen;
+  }
+
+  function newSession(opts){
+    clearTimer();
+    session={mode:opts.mode,exam:opts.exam||null,passMark:opts.passMark||null,questions:opts.questions,current:0,answers:{},flags:[],feedback:!!opts.feedback,startedAt:Date.now(),duration:opts.duration||null,finished:false,config:opts.config||null};
+    saveActive();renderQuiz();
+  }
+  function startExam(exam){const meta=DATA.exams.find(e=>e.exam===exam);const qs=DATA.questions.filter(q=>q.exam===exam).sort((a,b)=>a.questionNo-b.questionNo);newSession({mode:'exam',exam,passMark:meta.passMark,questions:qs,feedback:false,duration:120*60})}
+  function startPractice(c){const qs=chooseNoRepeat(c);if(!qs.length){toast('対象問題がありません');return}newSession({mode:'practice',questions:qs,feedback:c.feedback,config:c})}
+  function startWrongReview(){
+    const stats=read(LS.stats,{});let qs=DATA.questions.filter(q=>stats[q.id]&&stats[q.id].attempts>stats[q.id].correct);
+    qs=shuffle(qs).slice(0,20);if(!qs.length){toast('間違えた問題はまだありません');return}
+    newSession({mode:'practice',questions:qs,feedback:true,config:{count:qs.length,section:'wrong',topic:'wrong',feedback:true}})
+  }
+
+  function renderQuiz(){
+    setView('quiz'); if(!session||!session.questions.length)return renderHome();
+    const q=session.questions[session.current], answer=session.answers[q.id], isAnswered=answer!=null;
+    const showFeedback=session.feedback&&isAnswered;
+    const correct=answer===q.correct;
+    const flags=new Set(session.flags||[]), bookmarked=new Set(read(LS.bookmarks,[]));
+    $app.innerHTML=`
+      <div class="quiz-head"><div class="grow"><b>${session.mode==='exam'?`第${session.exam}回 過去問`:`重複なし演習 ${session.questions.length}問`}</b><small>問題 ${session.current+1} / ${session.questions.length}</small></div>${session.duration?'<span class="timer" id="timer">--:--</span>':''}</div>
+      <div class="progress"><div style="width:${(session.current+1)/session.questions.length*100}%"></div></div>
+      <section class="question-card">
+        <div class="q-tags"><span class="tag">${esc(q.section)}</span><span class="tag">${esc(q.topic)}</span><span class="tag">第${q.exam}回 問${q.questionNo}</span></div>
+        <div class="question-text">${esc(q.text)}</div>
+        <div class="answer-title">解答を選択</div>
+        <div class="answer-grid">${[1,2,3,4].map(n=>{
+          let cl='answer-btn';if(answer===n)cl+=' selected';if(showFeedback&&n===q.correct)cl+=' correct';if(showFeedback&&answer===n&&n!==q.correct)cl+=' wrong';
+          return `<button class="${cl}" data-answer="${n}" ${showFeedback?'disabled':''}>${CIRCLES[n]}</button>`}).join('')}</div>
+        ${showFeedback?`<div class="feedback ${correct?'ok':'bad'}"><b>${correct?'正解':'不正解'}　公式正答 ${CIRCLES[q.correct]}</b><div class="explain">日本貸金業協会の正答表に基づく判定です。公式資料には個別の解説は掲載されていません。</div></div>`:''}
+      </section>
+      <div class="quiz-actions">
+        <button class="secondary" id="prevBtn" ${session.current===0?'disabled':''}>前の問題</button>
+        <button class="secondary" id="nextBtn">${session.current===session.questions.length-1?'結果へ':'次の問題'}</button>
+        <button class="secondary" id="flagBtn">${flags.has(q.id)?'★ 後で見直す':'☆ 後で見直す'}</button>
+        <button class="secondary" id="bookmarkBtn">${bookmarked.has(q.id)?'★ 保存済み':'☆ ブックマーク'}</button>
+        <button class="danger wide" id="finishBtn">演習を終了して採点</button>
+      </div>
+      ${session.mode==='exam'?`<details class="navigator"><summary>問題一覧（回答済み ${Object.keys(session.answers).length}/${session.questions.length}）</summary><div class="qnav">${session.questions.map((x,i)=>`<button data-go="${i}" class="${session.answers[x.id]!=null?'done':''} ${i===session.current?'current':''} ${flags.has(x.id)?'flag':''}">${i+1}</button>`).join('')}</div></details>`:''}
+      <div class="source-note">出典：${esc(q.source)}　<a href="${q.sourceUrl}" target="_blank" rel="noopener">公式ページ</a></div>`;
+    $app.querySelectorAll('[data-answer]').forEach(b=>b.onclick=()=>answerQuestion(Number(b.dataset.answer)));
+    document.getElementById('prevBtn').onclick=()=>goTo(session.current-1);
+    document.getElementById('nextBtn').onclick=()=>{
+      if(session.current===session.questions.length-1) finishSession(); else goTo(session.current+1);
+    };
+    document.getElementById('finishBtn').onclick=finishSession;
+    document.getElementById('flagBtn').onclick=()=>toggleFlag(q.id);
+    document.getElementById('bookmarkBtn').onclick=()=>toggleBookmark(q.id);
+    $app.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>goTo(Number(b.dataset.go)));
+    if(session.duration)startTimer();
+  }
+  function answerQuestion(n){const q=session.questions[session.current];session.answers[q.id]=n;saveActive();renderQuiz()}
+  function goTo(i){if(i<0||i>=session.questions.length)return;session.current=i;saveActive();renderQuiz()}
+  function toggleFlag(id){const s=new Set(session.flags||[]);s.has(id)?s.delete(id):s.add(id);session.flags=[...s];saveActive();renderQuiz()}
+  function toggleBookmark(id){const s=new Set(read(LS.bookmarks,[]));s.has(id)?s.delete(id):s.add(id);write(LS.bookmarks,[...s]);renderQuiz()}
+  function startTimer(){
+    const el=document.getElementById('timer');if(!el)return;
+    const tick=()=>{const left=Math.max(0,session.duration-Math.floor((Date.now()-session.startedAt)/1000));const m=Math.floor(left/60),s=left%60;el.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;if(left<=0){clearTimer();toast('制限時間が終了しました');finishSession(true)}};
+    tick();timerHandle=setInterval(tick,1000);
+  }
+
+  function finishSession(force=false){
+    if(!session)return;
+    const unanswered=session.questions.length-Object.keys(session.answers).length;
+    if(!force&&unanswered&& !confirm(`未回答が${unanswered}問あります。採点しますか？`))return;
+    clearTimer();session.finished=true;
+    const stats=read(LS.stats,{});let score=0;
+    for(const q of session.questions){const ok=session.answers[q.id]===q.correct;if(ok)score++;const st=stats[q.id]||{attempts:0,correct:0};st.attempts++;if(ok)st.correct++;st.last=Date.now();stats[q.id]=st}
+    write(LS.stats,stats);
+    const hist=read(LS.history,[]);hist.unshift({at:Date.now(),mode:session.mode,exam:session.exam,score,total:session.questions.length,passMark:session.passMark});write(LS.history,hist.slice(0,100));
+    localStorage.removeItem(LS.active);renderResults(score);
+  }
+
+  function renderResults(score){
+    setView('results');
+    const total=session.questions.length,pct=Math.round(score/total*100),pass=session.mode==='exam'?score>=session.passMark:null;
+    const groups={};for(const q of session.questions){const g=q.topic;groups[g]??={n:0,c:0};groups[g].n++;if(session.answers[q.id]===q.correct)groups[g].c++}
+    const weak=Object.entries(groups).sort((a,b)=>(a[1].c/a[1].n)-(b[1].c/b[1].n)).slice(0,3);
+    $app.innerHTML=`
+      <h2 style="text-align:center;margin-top:4px">採点結果</h2>
+      <div class="score-ring" style="--pct:${pct}%"><div class="inside"><strong>${score}/${total}</strong><span>正答率 ${pct}%</span></div></div>
+      ${pass!==null?`<div class="verdict ${pass?'pass':'fail'}">${pass?'合格':'不合格'}</div><p class="subtle" style="text-align:center">第${session.exam}回の公式合格基準：${session.passMark}点／50点</p>`:`<div class="verdict">演習完了</div>`}
+      <div class="card"><b>分野別結果</b><div class="breakdown" style="margin-top:12px">${Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0],'ja')).map(([g,v])=>`<div class="bar-row"><span>${esc(g)}<br><small>${v.c}/${v.n}</small></span><div class="bar-track"><i style="width:${v.c/v.n*100}%"></i></div></div>`).join('')}</div></div>
+      <div class="notice ${pct<60?'warning':''}"><b>重点復習</b><br>${weak.map(([g,v])=>`${esc(g)}（${v.c}/${v.n}）`).join('、')}を優先して復習してください。</div>
+      <div class="row"><button class="primary" id="retryBtn">${session.mode==='exam'?'もう一度同じ回を解く':'新しい問題を解く'}</button><button class="secondary" id="homeResult">ホームへ</button></div>
+      <h2>全問題の回答一覧</h2>
+      ${session.questions.map((q,i)=>{const a=session.answers[q.id],ok=a===q.correct;return `<details class="review-card" ${!ok?'open':''}><summary><span class="review-num ${ok?'ok':'bad'}">${i+1}</span><span style="flex:1"><b>${ok?'正解':'不正解'}</b><br><small class="subtle">第${q.exam}回 問${q.questionNo}・${esc(q.topic)}</small></span><span>${a?CIRCLES[a]:'未'} → ${CIRCLES[q.correct]}</span></summary><div class="review-body"><div class="review-text">${esc(q.text)}</div><div class="answer-line">あなたの回答：${a?CIRCLES[a]:'未回答'}　／　公式正答：${CIRCLES[q.correct]}</div><div class="source-note">個別解説は公式には掲載されていません。正答は日本貸金業協会の正答表に基づきます。</div></div></details>`}).join('')}
+      ${sourceFooter()}`;
+    document.getElementById('homeResult').onclick=renderHome;
+    document.getElementById('retryBtn').onclick=()=>{const old=session;if(old.mode==='exam')startExam(old.exam);else startPractice(old.config||practiceConfig)};
+  }
+
+  function renderStats(){
+    setView('stats');const stats=read(LS.stats,{}),hist=read(LS.history,[]);
+    const group={};for(const q of DATA.questions){const s=stats[q.id];if(!s)continue;group[q.topic]??={a:0,c:0};group[q.topic].a+=s.attempts;group[q.topic].c+=s.correct}
+    const attempts=Object.values(stats).reduce((n,s)=>n+s.attempts,0),correct=Object.values(stats).reduce((n,s)=>n+s.correct,0);
+    $app.innerHTML=`<h2 style="margin-top:4px">成績・履歴</h2>
+      <div class="hero" style="padding:17px"><div class="hero-stats" style="margin:0"><div class="hero-stat"><strong>${attempts}</strong><span>解答数</span></div><div class="hero-stat"><strong>${Object.keys(stats).length}</strong><span>学習済み問題</span></div><div class="hero-stat"><strong>${attempts?Math.round(correct/attempts*100):0}%</strong><span>正答率</span></div></div></div>
+      <h2>細分類別</h2><div class="card">${Object.keys(group).length?Object.entries(group).sort((a,b)=>(a[1].c/a[1].a)-(b[1].c/b[1].a)).map(([g,v])=>`<div class="bar-row" style="margin:11px 0"><span>${esc(g)}<br><small>${v.c}/${v.a}</small></span><div class="bar-track"><i style="width:${v.c/v.a*100}%"></i></div></div>`).join(''):'<div class="empty">まだ学習履歴がありません。</div>'}</div>
+      <h2>受験履歴</h2><div class="card">${hist.length?hist.slice(0,30).map(h=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)"><span style="flex:1"><b>${h.mode==='exam'?`第${h.exam}回`:'ランダム演習'}</b><br><small class="subtle">${fmtDate(h.at)}</small></span><b>${h.score}/${h.total}</b>${h.mode==='exam'?`<span class="pass-chip">基準 ${h.passMark}</span>`:''}</div>`).join(''):'<div class="empty">履歴はありません。</div>'}</div>
+      <button class="danger" id="resetAll">成績・出題履歴をすべて削除</button>${sourceFooter()}`;
+    document.getElementById('resetAll').onclick=()=>{if(confirm('成績、受験履歴、重複防止用の出題履歴をすべて削除しますか？')){[LS.history,LS.stats,LS.seen,LS.active].forEach(k=>localStorage.removeItem(k));toast('削除しました');renderStats()}};
+  }
+
+  $home.onclick=()=>{if(view==='quiz'&&session&&!session.finished&&Object.keys(session.answers).length){if(!confirm('回答は端末に保存されます。ホームへ戻りますか？'))return}renderHome()};
+  const sizes=[15,16,18,20];let fontIndex=Math.max(0,sizes.indexOf(read(LS.font,16)));document.documentElement.style.setProperty('--qfont',sizes[fontIndex]+'px');
+  $font.onclick=()=>{fontIndex=(fontIndex+1)%sizes.length;const n=sizes[fontIndex];write(LS.font,n);document.documentElement.style.setProperty('--qfont',n+'px');toast(`問題文 ${n}px`)};
+  if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+  renderHome();
 })();

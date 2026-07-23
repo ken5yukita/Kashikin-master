@@ -1,1 +1,14 @@
-{"name": "貸金業務取扱主任者 Study", "short_name": "貸金Study", "start_url": "./", "display": "standalone", "background_color": "#f3f6fb", "theme_color": "#1e4fd1", "lang": "ja", "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"}]}
+{
+  "name":"貸金主任者 過去問1000",
+  "short_name":"貸金過去問",
+  "description":"貸金業務取扱主任者資格試験 第1回〜第20回の公式過去問演習",
+  "start_url":"./index.html",
+  "scope":"./",
+  "display":"standalone",
+  "background_color":"#f4f7f6",
+  "theme_color":"#0b5b4b",
+  "icons":[
+    {"src":"icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src":"icon-512.png","sizes":"512x512","type":"image/png"}
+  ]
+}
